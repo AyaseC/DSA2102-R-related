@@ -1,0 +1,49 @@
+---
+title: "Tut4"
+output: html_document
+---
+```{r}
+library(jsonlite)
+library(sf)
+fname <- "../data/restaurants_dataset.json"
+rest_lines <- readLines(fname)
+rest_json <- lapply(rest_lines, fromJSON)
+
+reclass <- function(x){
+  class(x) <- "restaurant"
+  x
+}
+rest_class_list <- lapply(rest_json, reclass)
+
+
+summary.restaurant <- function(x){
+  cat(paste(x$name,"was graded", nrow(x$grades),"times."))
+}
+```
+
+```{r}
+library(sf)
+x<-unlist(sapply(rest_json, function(x) x$address$coord[1]))
+y<-unlist(sapply(rest_json, function(x) x$address$coord[2]))
+names<-sapply(rest_json,function(x) x$name)
+borough<-sapply(rest_json,function(x) x$borough)
+cuisine<-sapply(rest_json, function(x) x$cuisine)
+df1<-data.frame(cbind(names,x,y))
+df2<-data.frame(cbind(df1,borough))
+df3<-data.frame(cbind(df2,cuisine))
+rest_sf<-st_as_sf(df3,coords = c("x","y"),crs=4326)
+```
+
+```{r}
+
+ur2<-"https://eservices.mas.gov.sg/api/action/datastore/search.json?resource_id=7f1363cc-3875-4e03-a389-fc47342bb840&limit=1000"
+d1<-fromJSON((ur2))
+mas_data<-d1$result$records
+data_seq<-seq(as.Date("1991-02-01"),length=342,by="1 month")
+mas_data$end_of_month<-data_seq-1
+plot(mas_data$end_of_month,as.numeric(mas_data$cards_main)/1e6,type = "l",col="blue",xlab = "Month",ylab = "No.of cards(millions)",las=2,xaxt='n',main="Number of cards")
+lines(mas_data$end_of_month,as.numeric(mas_data$cards_supp)/1e6,col="red")
+x_ticks<-seq.Date(as.Date("1991-01-31"),to=as.Date("2019-01-31"),by="1 year")
+axis(side=1,at=x_ticks,labels = strftime(x_ticks,"%b-%y"))
+legend("topleft",legend = c("Main cards","Supplementary cards"),lty=1,col=c("red","blue"))
+```

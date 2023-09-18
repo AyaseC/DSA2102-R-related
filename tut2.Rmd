@@ -1,0 +1,75 @@
+##mi1
+1. <- should be used instead of =
+2.The unique() operation does not extract the unique value of x and y, hence the loop iterates through pmf value instead of sample space value
+3.+ sign in the denominator of the log function is incorrect.
+4.There should not be 3 for loops
+
+##mi2
+1.The for loop iterates the number of rows instead of the possible value of x and y should be taken
+2.[[]] is not needed as x and y are vectors
+3.The joint pmf value should not be the product of the marginals
+
+##mi3
+1.Forming data matrix is not necessary
+2.The checking of equality is incorrect as it should be computing probability estimates.
+
+```{r echo=FALSE}
+telco <- readRDS("../data/telco.rds")
+mi <- function(v1, v2) {
+  v1_u <- unique(v1)
+  v2_u <- unique(v2)
+  I_xy <- 0
+  for(x in v1_u) {
+    p_x <- mean(v1 == x)
+    for(y in v2_u) {
+      p_xy <- mean(v1 == x & v2 == y)
+      p_y <- mean(v2 == y)
+      if(p_xy == 0) {
+        next
+      }
+      I_xy <- I_xy + p_xy * log(p_xy / (p_x * p_y))
+    }
+  }
+  I_xy
+}
+```
+```{r}
+x <- telco$Partner
+y <- telco$Dependents
+mi(x, y)
+```
+
+```{r echo=FALSE}
+x <-seq(-2, 12, length=100)
+y1 <- 2 * x/sqrt(x^2 + 1)
+y2 <- x/2 - 3
+plot(x, y1, type="l", ylim=c(-2, 3), ylab="y", main="Finding The Precise Root")
+lines(x, y2)
+points(10, 2, cex=5, col="red")
+text(4.5, -1, expression(y == frac(x,2) - 3), pos=4)
+text(0.5, 1, expression(y == frac(2*x, sqrt(x^2 + 1))), pos=2)
+abline(h=0, lty=2)
+```
+
+```{r echo=FALSE}
+x_start <- 8
+f <- function(x) {2*x/sqrt(x^2 + 1) - x/2+3}
+x <- x_start
+while(abs(f(x))>1e-6){
+  y <- 2*x/sqrt(x^2 + 1)
+  x <- (y + 3)*2
+}
+x_final <- x
+```
+
+```{r}
+uniroot(f, c(8, 11))$root
+f2 <- function(x){5*x/sqrt(x^2 + 1) - x/2 + 3}
+x <- seq(-10, 20, length=100)
+y1 <- 5*x/sqrt(x^2 + 1)
+y2 <- x/2 - 3
+plot(x, y1, type="l")
+lines(x, y2, type="l")
+root_intervals <- list(c(-5, -2.5), c(-2.5, 0), c(12, 17))
+f2_roots <- vapply(root_intervals, function(x)uniroot(f2, x)$root, 0.3)
+```

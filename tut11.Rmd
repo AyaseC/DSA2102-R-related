@@ -1,0 +1,44 @@
+---
+title: "tut11"
+output: html_document
+---
+
+```{r echo=FALSE}
+sym_list <- readRDS("../data/symptom_list.rds")
+
+jac_fn <- function(vec1,vec2){
+  numerator <- length(intersect(vec1,vec2))
+  denom <- length(union(vec1,vec2))
+  jacd <- 1-numerator/denom
+  return(jacd)
+}
+jac_fn(sym_list$Allergy, sym_list$`Common Cold`)
+```
+
+```{r echo=FALSE}
+library(tidyverse)
+full_mat <- matrix(0,nrow=length(sym_list),ncol=length(sym_list))
+rownames(full_mat) <- colnames(full_mat) <- names(sym_list)
+
+for(i in 1:length(sym_list))
+  if(i<length(sym_list)){
+    for(j in (i+1):length(sym_list)){
+      full_mat[j,i] <- jac_fn(sym_list[[i]],sym_list[[j]])
+  }
+}
+
+
+d2 <- as.dist(full_mat)
+h1 <- hclust(d2,method="ward.D2")
+plot(as.dendrogram(h1))
+
+library(MASS)
+grps <- cutree(h1,k=4)
+mds_out <- sammon(d2)
+df1 <- data.frame(mds_out$points)%>%as_tibble()%>%
+  mutate(disease=rownames(mds_out$points),
+         grps1=grps[disease],
+         grps=grps)
+ggplot(df1)+geom_text(aes(x=X1,y=X2,label=disease,col=as.factor(grps1)),
+                      show.legend = FALSE)
+```

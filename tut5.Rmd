@@ -1,0 +1,84 @@
+---
+title: "tut5"
+output: html_document
+---
+
+```{r}
+library(tidyverse)
+athlete_events <- read.csv("../data/athlete_events.csv")
+summer <- filter(athlete_events, Season=="Summer")
+view(summer)
+```
+
+```{r}
+q1_tbl <- summer %>%
+  group_by(Year) %>%
+  summarise(n_noc=n_distinct(NOC))
+q1_tbl
+```
+
+```{r}
+q2_tbl <- select(summer, Year) %>%
+  unique() %>%
+  arrange(Year) %>%
+  mutate(yrs_to_past= Year - lag(Year))
+
+q2_tbl
+```
+
+```{r}
+q3_tbl <- q1_tbl %>%
+  filter(Year >= 1950) %>%
+  mutate(yr_bef= lag(n_noc), yr_aft= lead(n_noc)) %>%
+  rowwise() %>%
+  mutate(ma=mean(c_across(n_noc:yr_aft), na.rm=TRUE))
+q3_tbl
+```
+
+```{r}
+q4_tbl <- summer%>%select(ID,Year,NOC)%>%
+  group_by(Year,NOC)%>%
+  summarize(noc_ath=n_distinct(ID))%>%
+  mutate(tot_ath=sum(noc_ath),prop=noc_ath/tot_ath)
+q4_tbl
+```
+
+```{r}
+q4_tbl%>%mutate(mr=min_rank(desc(prop)))%>%
+  filter(NOC=='USA', Year>=1950, mr==1)
+#1956
+```
+
+```{r}
+athlete <- summer%>%select(ID,Year,Medal)
+qn6_tbl <- summer%>%select(ID)%>%distinct()
+mylist <- c()
+for(i in unique(athlete$ID)){
+   athletei <- filter(athlete,athlete$ID==i)
+   athletei$ID <- dense_rank(athletei$Year)
+   b <- filter(athletei,athletei$Medal!="NA")
+   if(nrow(b)==0){
+     yr <- "INF"
+   }
+   else{
+     yr <- b$ID[1]-1
+   }
+   mylist <- c(mylist,yr)
+}
+mylist
+qn6_tbl <- summer%>%select(ID)%>%distinct()%>%
+  summarise(ID,num_ol_bef=mylist)
+qn6_tbl 
+```
+  
+
+
+
+```{r}
+q7_tbl <- summer%>%mutate(gender=str_extract(Event,"(Women)|(Men)|(Mixed)"))%>%
+  filter(gender!="Mixed",Year==2016)%>%
+  group_by(gender,Sport)%>%
+  summarise(ave_ht=mean(Height,na.rm=TRUE),ave_wt=mean(Weight,na.rm=TRUE))
+q7_tbl
+#qn_8:Why the second column in qn6_tbl is dbl
+```

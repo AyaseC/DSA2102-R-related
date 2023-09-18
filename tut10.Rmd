@@ -1,0 +1,40 @@
+```{r echo=FALSE}
+library(tidyverse)
+athlete_events <- read.csv("../data/athlete_events.csv")
+
+athlete_life <- athlete_events%>%
+  group_by(ID)%>%
+  select(Year,Sport)%>%
+  mutate(lifetime=max(Year)-min(Year))%>%
+  select(ID,Sport,lifetime)%>%
+  unique()
+
+sport_life <- athlete_life%>%
+  group_by(Sport)%>%
+  summarise(avg=mean(lifetime))
+sportlife_top10 <- top_n(sport_life,10,avg)
+sportlife_bottom10 <- top_n(sport_life,-10,avg)
+
+ggplot(sportlife_top10,aes(Sport,avg))+geom_bar(stat='identity')+labs(title="10 sport with longest athlete lifetime",y="avg lifetime")
+ggplot(sportlife_bottom10,aes(Sport,avg))+geom_bar(stat='identity')+labs(title="10 sport with shortest athlete lifetime",y="avg lifetime")
+```
+The sports with shortest lifetime of athletes are mostly minor sports. The Sports with longest lifetime of athletes
+are mostly sports that requires more on technique rather than fitness.
+```{r echo=FALSE}
+athlete_life2 <- athlete_events%>%
+  group_by(ID)%>%
+  select(Year,NOC)%>%
+  mutate(lifetime=max(Year)-min(Year))%>%
+  select(ID,NOC,lifetime)%>%
+  unique()
+
+country_life <- athlete_life2%>%
+  group_by(NOC)%>%
+  summarise(avg=mean(lifetime))
+countrylife_top10 <- top_n(country_life,10,avg)
+countrylife_bottom10 <- top_n(country_life,-10,avg)
+
+ggplot(countrylife_top10,aes(NOC,avg))+geom_bar(stat='identity')+labs(title="10 Countrys with longest athlete lifetime",y="avg lifetime")
+ggplot(countrylife_bottom10,aes(NOC,avg))+geom_bar(stat='identity')+labs(title="10 Countrys with shortest athlete lifetime",y="avg lifetime")
+```
+The country with athletes who have shortest lifetime are mostly countries that does not exist now, with a few Middle East country and South Asian country. The country with athletes who have longest lifetime are mostly from South America and East Europe.

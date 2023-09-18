@@ -1,0 +1,79 @@
+---
+title: "Untitled"
+output: html_document
+---
+```{r echo=FALSE}
+library(readxl)
+library(tidyverse)
+library(lubridate)
+library(tidyr)
+setwd("../data")
+playerstats <- read_excel("player_stats_fifa2018.xlsx")
+match_schedule <- read_excel("match_schedule.xlsx") %>%
+  mutate(match_date=as.Date(date_time,format="%d %b %Y"))
+country_tbl <- read_excel("country_fifa2018.xlsx")
+p_info <- read_excel("player_info_fifa2018.xlsx") %>%
+  mutate(DOB=as.Date(DOB, format="%d/%m/%y")) %>%
+  left_join(select(country_tbl,2,3),by=c("Country"="ShortName"))
+```
+
+```{r echo=FALSE}
+q1_vec <- p_info %>%
+  mutate(club_country=str_sub(Club,-4,-2))%>%
+  group_by(Country)%>%
+  summarise(ss=sum(club_country==Country),.groups = "drop")%>%
+  filter(ss>=12)
+q1_vec <- q1_vec$Country
+q1_vec
+```
+
+```{r echo=FALSE}
+  
+temp1 <- match_schedule%>%
+  mutate(m_md=strftime(match_date,"%m-%d"))
+temp2 <- playerstats%>%
+  left_join(p_info,by=c("player_name"="Name.x"))%>%
+  mutate(b_md=strftime(DOB,"%m-%d"))%>%
+  mutate(match_id=as.character(match_id))%>%
+  left_join(temp1,by=c("match_id"="match_id"))%>%
+  filter(m_md==b_md)
+q2_vec <- unique(temp2$player_name)
+q2_vec
+```
+
+```{r echo=FALSE}
+df <- p_info%>%
+  filter(Pos=="DF")%>%
+  group_by(Country)%>%
+  filter(duplicated(Club))
+q3_vec <- unique(df$Country)
+q3_vec
+```
+
+```{r echo=FALSE}
+
+tackles <- playerstats%>%
+  filter(Activity==	"Tackles gaining/not gaining the ball")%>%
+  select(Total,country,time,jersey,match_id)%>%
+  mutate(Total=if_else(is.na(Total),"0/0",Total))%>%
+  separate(time, into=c("min","sec"),sep="\'")%>%
+  separate(Total, into=c("gaining","notgaining"),sep="/")%>%
+  mutate(tack_per_game=(as.numeric(gaining) + as.numeric(notgaining))/(as.numeric(min)+parse_number(sec)/60)*90)%>%
+  filter(min>="30")%>%
+  group_by(country,jersey)%>%
+  summarise(mean_tack_pergame=mean(tack_per_game))%>%
+  arrange(desc(mean_tack_pergame))%>%
+  left_join(p_info,by=c("jersey"="Jersey","country"="Name.y"))%>%
+  filter(Pos=="DF")%>%
+  pull(Name.x)
+q4_vec <- tackles[1:10]  
+q4_vec
+```
+
+5.Which club has most players participated in World Cup 2018?
+```{r echo=FALSE}
+clubs <- table(p_info$Club)
+clubs1 <- sort(clubs)
+tail(clubs1,n=1)
+```
+Manchester City.

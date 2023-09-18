@@ -1,0 +1,73 @@
+---
+title: "Untitled"
+output: html_document
+---
+```{r echo=FALSE}
+library(tidyverse)
+library(readxl)
+library(sf)
+sg_poly <- st_read("../data/national-map-polygon-kml.kml")
+sg_poly <- st_transform(sg_poly,3414)
+##Warm-up
+sg2 <- sg_poly %>%
+  mutate(FOLDERPATH = str_replace(FOLDERPATH,"Layers/",""))%>%
+  filter(str_detect(Name, "(PEDRA BRANCA)|(MALAYSIA)", TRUE),
+  str_detect(FOLDERPATH, "(PedraBranca)|(PB_draw_frame)", TRUE))
+         
+
+coastal <- filter(sg2, FOLDERPATH=="Coastal_Outlines")
+hydro_parks <- filter(sg2, FOLDERPATH %in% c("Hydrographic",
+              "Parks_NaturalReserve"))
+airport_cbd <- filter(sg2, FOLDERPATH %in% c("Airport_Runway",
+              "Central_Business_District"))
+ggplot(coastal) + geom_sf(fill=NA)+
+  geom_sf(data=hydro_parks, aes(fill=FOLDERPATH),col=NA)+
+  geom_sf(data=airport_cbd, col="red",lwd=0.3,fill=NA)+
+  coord_sf(datum = sf::st_crs(3414))+
+  scale_fill_discrete(type=c("steelblue", "forestgreen"),name="Legend",
+  labels=c("Water bodies","Nature reserves"))+
+  labs(title="Hydrographic and Nature Reserves in Singapore")+
+  theme_classic()
+```
+
+```{r echo=FALSE}
+##Expressways in Singapore
+roads <- st_read("../data/national-map-line-kml.kml")
+roads <- st_transform(roads,3414)
+roads %>%
+  mutate(FOLDERPATH=str_replace(FOLDERPATH,"Layers/","")) %>%
+  filter(str_detect(FOLDERPATH,"Contour_250K",TRUE),
+         str_detect(FOLDERPATH,"International",TRUE))->roads_sf
+roads_sf <- st_zm(roads_sf)
+
+roads_sf %>%
+  filter(FOLDERPATH=="Expressway") %>%
+  mutate(seg_length=as.numeric(st_length(.))) %>%
+  group_by(Name)%>%
+  summarise(total_length=sum(seg_length) / 1e3,.groups="drop")%>%
+  mutate(Name=reorder(Name,x=total_length))%>%
+  ggplot()+geom_col(aes(y=Name,x=total_length))+
+  labs(title="Expressway Lengths in Singapore (km)", y="",x="Length(km)")
+```
+It takes in both back-and-forth
+```{r echo=FALSE}
+hawkers <- readRDS("../data/hawker_ctr_raw.rds")
+hawk_names <- vapply(hawkers[[1]][-1], function(x) x$NAME, "d")
+hawk_coords <- vapply(hawkers[[1]][-1], function(x) x$XY, "d")
+hawk_df <- tibble(name=hawk_names,xy=hawk_coords)%>%
+  separate(xy,into=c("X","Y"),sep=",",convert=TRUE)
+hawk_sf <- st_as_sf(hawk_df,coords=c("X","Y"))
+st_crs(hawk_sf) <-  3414
+pln_area <- st_read("../data/planning-boundary-area.kml")%>%
+  st_transform(crs=3414)
+hawk_in_pln <- st_contains(pln_area,hawk_sf)
+num_hawks <- vapply(hawk_in_pln,length,1L)
+ids <- which(num_hawks>=10)
+
+
+ggplot(coastal)+geom_sf(fill=NA,lwd=0.25)+geom_sf(data=hawk_sf,col="blue",size=1.5,alpha=0.5)+
+  geom_sf(data=pln_area,fill=NA,col="pink",lty=2)+
+  geom_sf(data=pln_area[ids,],aes(col=PLN_AREA_N),fill=NA)+
+  coord_sf(datum=sf::st_crs(3414))+
+  labs(y="",x="",title = "Planning areas with high concentration of hawker centres",colour = "Highlighted areas")+theme(legend.position = "bottom")
+```

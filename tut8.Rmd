@@ -1,0 +1,57 @@
+---
+title: "Untitled"
+output: html_document
+---
+```{r echo=FALSE}
+library(tidyverse)
+library(readxl)
+
+telco <- read.csv("../data/Telco-Customer-Churn.csv")%>%
+  as_tibble()
+
+telco%>%mutate(cut_tnr=cut_interval(tenure,n=10))%>%
+  group_by(Contract,cut_tnr)%>%add_tally()%>%
+  summarise(prop=mean(Churn=="Yes"),n=n[1],.groups = "drop")%>%
+  ggplot(aes(x=cut_tnr,y=prop))+geom_point(aes(colour=Contract,size=n))+geom_line(aes(group=Contract,colour=Contract))+
+  theme(legend.position = "bottom",axis.text.x = element_text(size=7))+
+  labs(x="Tenure(months)",y="Proportion",title="Individuals on Monthly Contracts May Churn")
+```
+
+```{r echo=FALSE}
+telco%>%mutate(OnlineSecurity=recode(OnlineSecurity,'No internet service'='No service'),
+               OnlineSecurity=factor(OnlineSecurity, levels=c("Yes","No","No service")))%>%
+  ggplot()+geom_bar(aes(x=OnlineSecurity, fill=Churn),position = "fill")+facet_wrap(~InternetService)+
+  theme(legend.position = "bottom")+labs(title="Proportion of churn is higher for fibre optic users.")
+```
+
+```{r echo=FALSE}
+yr <- 2020
+mths <- sprintf("%02d",1:12)
+root_s <- "http://www.weather.gov.sg/files/dailydata/"
+for (yy in yr)
+  for(mm in mths){
+    uu <- paste(root_s,
+                "DAILYDATA_S104_",
+                yy, mm, ".csv",sep="")
+    outname <- paste("../data/S104_",yy,mm,".csv",sep="")
+    cat(outname,"\n")
+    try(download.file(uu, outname))
+  }
+fnames <- list.files("../data","S104",full.names=TRUE)%>%sort
+
+all_dfs <- lapply(fnames, read.csv,na.strings='-',header=FALSE,skip=1,colClasses=c("character",rep("numeric",12)))
+all_dfs <- bind_rows(all_dfs)
+colnames(all_dfs) <- c("Station","year","month","day","daily_rain_total","highest_30min_rain",
+                       "highest_60min_rain","highest_120min_rain","mean_temp","max_temp",
+                       "min_temp","mean_wind","max_wind")
+all_dfs <- mutate(all_dfs,date=paste(year,month,day,sep="/"),date=as.Date(date,"%Y/%m/%d"))
+tmp <- tibble(xmin=c("2020-01-01","2020-06-01","2020-12-01"),xmax=c("2020-03-31","2020-09-30","2020-12-31"),ymin=22,ymax=36)
+tmp <- tmp%>%summarise(xmin=as.Date(xmin),xmax=as.Date(xmax),ymin=22,ymax=36)
+slice_head(all_dfs,n=366)%>%ggplot()+
+  geom_linerange(aes(x=date,ymin=min_temp,ymax=max_temp))+
+  geom_rect(data=tmp,aes(xmin=xmin,xmax=xmax,ymin=ymin,ymax=ymax),fill="red",alpha=0.3)+
+  theme_classic()+annotate("text",x=as.Date("2020-01-30"),36.5,label="NW monsoon")+
+  annotate("text",x=as.Date("2020-06-30"),36.5,label="SW monsoon")+
+  annotate("text",x=as.Date("2020-12-15"),36.5,label="NW monsoon")+
+  labs(title="Daily Temperature Range",y="Celsius",x="Date")
+```

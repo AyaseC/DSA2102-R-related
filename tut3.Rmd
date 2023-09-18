@@ -1,0 +1,34 @@
+```{r}
+library(jsonlite)
+codes <- fromJSON("../data/python_code.ipynb")
+dir.create("../data/temp")
+writeLines(unlist(codes$cells$source[codes$cells$cell_type=='code'])[1:2],"../data/temp/python_code.py")
+```
+
+```{r}
+epl <- read.csv("../data/EPL_1415_1516.csv", na.strings = "-", header = TRUE, colClasses = c(rep("character",4),rep("integer",9),rep("character",9)))
+epl$Date <- as.Date(epl$Date, format = '%d/%m/%Y')
+s1 <- as.matrix(epl[1:380,5:13])
+s2 <- as.matrix(epl[381:760,5:13])
+par(mfrow=c(1,2))
+hist(s1,breaks = 70)
+hist(s2,breaks = 70)
+
+# Many goals were scored in 1st, 45th and 90th min.
+
+row_wise_fn <- function(x){
+  h <- sum(x[14:22]=="H", na.rm=TRUE)
+  a <- sum(x[14:22]=="A", na.rm=TRUE)
+  if(h>a){
+    return("H")
+  }
+  if(h<a){
+    return("A")
+  }
+  if(h==a){
+    return("D")
+  }
+}
+epl$result <- apply(epl, 1, row_wise_fn)
+epl2_df <- data.frame(epl, stringsAsFactors = TRUE)
+```
